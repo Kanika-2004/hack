@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mentor Matching</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <script>
+        let userType = 'mentor';
+        let filteredStartups = [];
+
+        function setUserType(type) {
+            userType = type;
+            console.log("User type set to:", userType);
+        }
+
+        async function setCurrentPage(page) {
+            if (page === 'dashboard') {
+                await sendUserPreference(userType);
+            } else {
+                document.getElementById('app').innerHTML = pages[page]();
+            }
+        }
+
+        async function sendUserPreference(userType) {
+            const userData = { startuptype: userType };
+
+            try {
+                const response = await fetch("http://localhost:8000/filter-startups", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(userData)
+                });
+
+                const result = await response.json();
+                console.log("API Response:", result);
+
+                if (response.ok) {
+                    filteredStartups = result.data;
+                    document.getElementById('app').innerHTML = generateDashboard(userType);
+                } else {
+                    alert("Applying filter failed: " + result.message);
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Something went wrong. Please try again.");
+            }
+        }
+
+        const pages = {
+            landing: () => `
+                <div class="min-h-screen flex flex-col items-center justify-center bg-blue-100 p-6">
+                    <h1 class="text-4xl font-bold mb-4 text-center">Find the one who resonates with you!</h1>
+                    <p class="text-lg text-gray-700 mb-8 text-center">Connect with industry experts to take your idea to the next level</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl">
+                        <div class="bg-white shadow-md p-6 rounded-lg text-center">
+                            <h2 class="text-2xl font-semibold mb-4">Find a Mentor</h2>
+                            <p class="text-gray-600 mb-4">Get guidance from experienced mentors.</p>
+                            <button class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg" onclick="setUserType('mentor'); setCurrentPage('dashboard')">Explore</button>
+                        </div>
+                        <div class="bg-white shadow-md p-6 rounded-lg text-center">
+                            <h2 class="text-2xl font-semibold mb-4">Find a Cofounder</h2>
+                             <p class="text-gray-600 mb-4">Connect with like-minded entrepreneurs.</p>
+                            <button class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg" onclick="setUserType('co-founder'); setCurrentPage('dashboard')">Explore</button>
+                        </div>
+                        <div class="bg-white shadow-md p-6 rounded-lg text-center">
+                            <h2 class="text-2xl font-semibold mb-4">Find an Investor</h2>
+                             <p class="text-gray-600 mb-4">Secure funding to grow your business.</p>
+                            <button class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg" onclick="setUserType('investor'); setCurrentPage('dashboard')">Explore</button>
+                        </div>
+                    </div>
+                </div>`,
+            chat: () => `
+                <div class="p-6 bg-gray-50 min-h-screen">
+                    <div class="max-w-3xl mx-auto">
+                        <div class="flex items-center mb-6">
+                            <button class="mr-4 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded" onclick="setCurrentPage('dashboard')">← Back</button>
+                            <h2 class="text-3xl font-bold">Chat with Your ${userType.charAt(0).toUpperCase() + userType.slice(1)}</h2>
+                        </div>
+                        <div class="border rounded-lg bg-white shadow-lg p-4">
+                            <div id="chatMessages" class="h-64 mb-4 overflow-y-auto space-y-4 p-4 bg-gray-100 rounded-lg">
+                                <p class="text-gray-600 text-center">Start the conversation...</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" id="chatInput" placeholder="Type a message..." class="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <button class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg" onclick="sendMessage()">Send</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+
+        function generateDashboard(userType) {
+            return `
+                <div class="p-6 bg-gray-50 min-h-screen">
+                    <h2 class="text-3xl font-bold mb-6 text-center">Your ${userType.charAt(0).toUpperCase() + userType.slice(1)} Matches</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                        ${filteredStartups.length > 0 ? filteredStartups.map(startup => `
+                            <div class="bg-white shadow-lg p-6 rounded-lg text-center">
+                                <h3 class="text-xl font-semibold mb-2">${startup.Name}</h3>
+                                <p class="text-gray-600 mb-1">Email: ${startup.Email || 'N/A'}</p>
+                                <p class="text-gray-600 mb-1">Skills: ${startup.Skills || 'N/A'}</p>
+                                <p class="text-gray-600 mb-4">Experience: ${startup.YearsofExperience || 'N/A'} years</p>
+                                <button class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg w-full" onclick="setCurrentPage('chat')">Chat</button>
+                            </div>
+                        `).join('') : '<p class="text-gray-600 text-center">No matches found.</p>'}
+                    </div>
+                    <div class="text-center mt-6">
+                        <button class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-2 rounded-lg" onclick="setCurrentPage('landing')">← Back</button>
+                    </div>
+                </div>`;
+        }
+
+        function sendMessage() {
+            const chatInput = document.getElementById('chatInput');
+            const message = chatInput.value.trim();
+            if (message) {
+                const chatMessages = document.getElementById('chatMessages');
+                chatMessages.innerHTML += `<div class="flex justify-end"><div class="bg-blue-500 text-white rounded-lg p-3 max-w-md">${message}</div></div>`;
+                chatInput.value = "";
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        }
+
+        window.onload = () => setCurrentPage('landing');
+    </script>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">
+            <img src="nav1.jpeg" alt="Youth Startup Logo">
+        </div>
+        <div class="menu">
+            <a href="/hackItUp-25//homepage/i3.html">Home</a>
+            <a href="/hackItUp-25/homepage/about.html">About Us</a>
+            <a href="/hackItUp-25/homepage/features.html">OurFeatures</a>
+            
+        </div>
+        <div class="right-menu">
+            <div id="google_translate_element"></div>
+        </div>
+    </div>
+
+    <div id="app"></div>
+</body>
+</html>
